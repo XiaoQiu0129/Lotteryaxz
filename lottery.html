@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽奖系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.2rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            color: #4a90e2;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            border-bottom: 3px solid #4a90e2;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #4a90e2, #357abd);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            background: linear-gradient(45deg, #357abd, #2968a3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(45deg, #c0392b, #a93226);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-display {
+            display: block;
+            padding: 12px;
+            border: 2px dashed #4a90e2;
+            border-radius: 8px;
+            text-align: center;
+            background: #f8f9fa;
+            color: #4a90e2;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-display:hover {
+            background: #e3f2fd;
+            border-color: #357abd;
+        }
+
+        .lottery-area {
+            grid-column: 1 / -1;
+            text-align: center;
+        }
+
+        .lottery-result {
+            background: linear-gradient(45deg, #4a90e2, #357abd);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            margin: 20px 0;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(74, 144, 226, 0.3);
+        }
+
+        .lottery-result h3 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .winner-info {
+            font-size: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .participants-list {
+            grid-column: 1 / -1;
+        }
+
+        .participants-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .participants-table th,
+        .participants-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e6ed;
+        }
+
+        .participants-table th {
+            background: linear-gradient(45deg, #4a90e2, #357abd);
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .participants-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4a90e2;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .spinning {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border-left: 4px solid #c62828;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border-left: 4px solid #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 抽奖系统</h1>
+            <p>奖杯兑换比例：5个奖杯 = 1张抽奖券</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalParticipants">0</div>
+                <div class="stat-label">总参与人数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalTickets">0</div>
+                <div class="stat-label">总抽奖券数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalTrophies">0</div>
+                <div class="stat-label">总奖杯数</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <h2>📝 添加参与者</h2>
+                <div class="form-group">
+                    <label for="name">姓名</label>
+                    <input type="text" id="name" placeholder="请输入姓名">
+                </div>
+                <div class="form-group">
+                    <label for="grade">年级</label>
+                    <input type="text" id="grade" placeholder="请输入年级">
+                </div>
+                <div class="form-group">
+                    <label for="school">分校</label>
+                    <input type="text" id="school" placeholder="请输入分校">
+                </div>
+                <div class="form-group">
+                    <label for="trophies">奖杯数量</label>
+                    <input type="number" id="trophies" placeholder="请输入奖杯数量" min="0">
+                </div>
+                <button class="btn" onclick="addParticipant()">添加参与者</button>
+                <div id="addMessage"></div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Excel文件导入</h2>
+                <p style="margin-bottom: 15px; color: #666;">
+                    Excel文件格式：姓名 | 年级 | 分校 | 奖杯数量
+                </p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)">
+                    <label for="excelFile" class="file-input-display">
+                        📁 点击选择Excel文件
+                    </label>
+                </div>
+                <div id="fileMessage"></div>
+            </div>
+
+            <div class="card lottery-area">
+                <h2>🎲 开始抽奖</h2>
+                <div class="lottery-result" id="lotteryResult">
+                    <h3>点击下方按钮开始抽奖</h3>
+                    <p>系统将根据抽奖券数量进行公平抽奖</p>
+                </div>
+                <button class="btn" onclick="startLottery()" id="lotteryBtn">开始抽奖</button>
+            </div>
+
+            <div class="card participants-list">
+                <h2>👥 参与者名单</h2>
+                <button class="btn btn-danger" onclick="clearAllParticipants()" style="float: right; margin-bottom: 20px;">清空所有数据</button>
+                <table class="participants-table" id="participantsTable">
+                    <thead>
+                        <tr>
+                            <th>姓名</th>
+                            <th>年级</th>
+                            <th>分校</th>
+                            <th>奖杯数量</th>
+                            <th>抽奖券数量</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participantsBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card participants-list">
+                <h2>🎯 抽奖记录</h2>
+                <button class="btn btn-danger" onclick="clearLotteryRecords()" style="float: right; margin-bottom: 20px;">清空记录</button>
+                <div style="clear: both;"></div>
+                <p style="margin-bottom: 15px; color: #666;">
+                    显示最近10次抽奖记录，每次中奖后抽奖券自动扣减1张
+                </p>
+                <table class="participants-table" id="recordsTable">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>抽奖时间</th>
+                            <th>中奖者</th>
+                            <th>年级</th>
+                            <th>分校</th>
+                            <th>剩余抽奖券</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #999; padding: 40px;">
+                                暂无抽奖记录
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let participants = [];
+        let lotteryRecords = [];
+
+        // 添加参与者
+        function addParticipant() {
+            const name = document.getElementById('name').value.trim();
+            const grade = document.getElementById('grade').value.trim();
+            const school = document.getElementById('school').value.trim();
+            const trophies = parseInt(document.getElementById('trophies').value) || 0;
+
+            if (!name || !grade || !school) {
+                showMessage('addMessage', '请填写完整信息！', 'error');
+                return;
+            }
+
+            if (trophies < 0) {
+                showMessage('addMessage', '奖杯数量不能为负数！', 'error');
+                return;
+            }
+
+            const tickets = Math.floor(trophies / 5);
+            
+            const participant = {
+                id: Date.now(),
+                name,
+                grade,
+                school,
+                trophies,
+                tickets
+            };
+
+            participants.push(participant);
+            updateTable();
+            updateStats();
+            clearForm();
+            showMessage('addMessage', '参与者添加成功！', 'success');
+        }
+
+        // 清空表单
+        function clearForm() {
+            document.getElementById('name').value = '';
+            document.getElementById('grade').value = '';
+            document.getElementById('school').value = '';
+            document.getElementById('trophies').value = '';
+        }
+
+        // 显示消息
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="${type}-message">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 3000);
+        }
+
+        // 更新表格
+        function updateTable() {
+            const tbody = document.getElementById('participantsBody');
+            tbody.innerHTML = '';
+
+            participants.forEach(participant => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${participant.name}</td>
+                    <td>${participant.grade}</td>
+                    <td>${participant.school}</td>
+                    <td>${participant.trophies}</td>
+                    <td>${participant.tickets}</td>
+                    <td>
+                        <button class="btn" style="padding: 5px 15px; font-size: 12px;" onclick="removeParticipant(${participant.id})">删除</button>
+                    </td>
+                `;
+                row.classList.add('fade-in');
+            });
+        }
+
+        // 删除参与者
+        function removeParticipant(id) {
+            participants = participants.filter(p => p.id !== id);
+            updateTable();
+            updateStats();
+        }
+
+        // 清空所有参与者
+        function clearAllParticipants() {
+            if (confirm('确定要清空所有参与者数据吗？此操作不可撤销！')) {
+                participants = [];
+                updateTable();
+                updateStats();
+                showMessage('addMessage', '所有数据已清空！', 'success');
+            }
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            const totalParticipants = participants.length;
+            const totalTickets = participants.reduce((sum, p) => sum + p.tickets, 0);
+            const totalTrophies = participants.reduce((sum, p) => sum + p.trophies, 0);
+
+            document.getElementById('totalParticipants').textContent = totalParticipants;
+            document.getElementById('totalTickets').textContent = totalTickets;
+            document.getElementById('totalTrophies').textContent = totalTrophies;
+        }
+
+        // 处理文件上传
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    let importCount = 0;
+                    let errorCount = 0;
+
+                    // 跳过标题行（如果存在）
+                    const startRow = jsonData[0] && typeof jsonData[0][0] === 'string' ? 1 : 0;
+
+                    for (let i = startRow; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (row.length < 4) continue;
+
+                        const [name, grade, school, trophies] = row;
+                        
+                        if (name && grade && school && typeof trophies === 'number' && trophies >= 0) {
+                            const tickets = Math.floor(trophies / 5);
+                            const participant = {
+                                id: Date.now() + i,
+                                name: String(name).trim(),
+                                grade: String(grade).trim(),
+                                school: String(school).trim(),
+                                trophies: parseInt(trophies),
+                                tickets
+                            };
+                            participants.push(participant);
+                            importCount++;
+                        } else {
+                            errorCount++;
+                        }
+                    }
+
+                    updateTable();
+                    updateStats();
+                    
+                    if (importCount > 0) {
+                        showMessage('fileMessage', `成功导入 ${importCount} 条数据${errorCount > 0 ? `，跳过 ${errorCount} 条无效数据` : ''}`, 'success');
+                    } else {
+                        showMessage('fileMessage', '没有找到有效数据，请检查文件格式', 'error');
+                    }
+                } catch (error) {
+                    showMessage('fileMessage', '文件解析失败，请检查文件格式', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 开始抽奖
+        function startLottery() {
+            if (participants.length === 0) {
+                showMessage('addMessage', '请先添加参与者！', 'error');
+                return;
+            }
+
+            const totalTickets = participants.reduce((sum, p) => sum + p.tickets, 0);
+            if (totalTickets === 0) {
+                showMessage('addMessage', '没有有效的抽奖券，请确保参与者有足够的奖杯！', 'error');
+                return;
+            }
+
+            const lotteryBtn = document.getElementById('lotteryBtn');
+            const lotteryResult = document.getElementById('lotteryResult');
+            
+            // 开始抽奖动画
+            lotteryBtn.disabled = true;
+            lotteryBtn.textContent = '抽奖中...';
+            lotteryBtn.classList.add('spinning');
+            
+            lotteryResult.innerHTML = '<h3 class="spinning">🎲</h3><p>正在抽奖中...</p>';
+
+            // 模拟抽奖过程
+            setTimeout(() => {
+                const winner = drawWinner();
+                
+                // 扣减中奖者的抽奖券
+                const winnerIndex = participants.findIndex(p => p.id === winner.id);
+                if (winnerIndex !== -1 && participants[winnerIndex].tickets > 0) {
+                    participants[winnerIndex].tickets -= 1;
+                }
+                
+                // 记录抽奖结果
+                const record = {
+                    id: Date.now(),
+                    timestamp: new Date().toLocaleString(),
+                    winner: { ...winner },
+                    remainingTickets: participants[winnerIndex] ? participants[winnerIndex].tickets : 0
+                };
+                lotteryRecords.unshift(record); // 最新记录在前
+                
+                // 更新显示
+                updateTable();
+                updateStats();
+                updateLotteryRecords();
+                
+                lotteryResult.innerHTML = `
+                    <h3>🎉 恭喜中奖！</h3>
+                    <div class="winner-info">
+                        <p><strong>姓名：</strong>${winner.name}</p>
+                        <p><strong>年级：</strong>${winner.grade}</p>
+                        <p><strong>分校：</strong>${winner.school}</p>
+                        <p><strong>奖杯数量：</strong>${winner.trophies}</p>
+                        <p><strong>剩余抽奖券：</strong>${record.remainingTickets}</p>
+                        <p style="font-size: 1rem; margin-top: 10px; opacity: 0.8;">抽奖券已自动扣减1张</p>
+                    </div>
+                `;
+                lotteryResult.classList.add('fade-in');
+                
+                lotteryBtn.disabled = false;
+                lotteryBtn.textContent = '再次抽奖';
+                lotteryBtn.classList.remove('spinning');
+            }, 2000);
+        }
+
+        // 抽奖算法（只考虑有抽奖券的参与者）
+        function drawWinner() {
+            const validParticipants = participants.filter(p => p.tickets > 0);
+            if (validParticipants.length === 0) {
+                return null;
+            }
+            
+            const totalTickets = validParticipants.reduce((sum, p) => sum + p.tickets, 0);
+            const randomNum = Math.floor(Math.random() * totalTickets) + 1;
+            
+            let currentSum = 0;
+            for (const participant of validParticipants) {
+                currentSum += participant.tickets;
+                if (randomNum <= currentSum) {
+                    return participant;
+                }
+            }
+            
+            // 备用方案
+            return validParticipants[Math.floor(Math.random() * validParticipants.length)];
+        }
+
+        // 更新抽奖记录显示
+        function updateLotteryRecords() {
+            const recordsBody = document.getElementById('recordsBody');
+            if (!recordsBody) return;
+            
+            recordsBody.innerHTML = '';
+            
+            if (lotteryRecords.length === 0) {
+                const row = recordsBody.insertRow();
+                row.innerHTML = `
+                    <td colspan="6" style="text-align: center; color: #999; padding: 40px;">
+                        暂无抽奖记录
+                    </td>
+                `;
+                return;
+            }
+            
+            lotteryRecords.slice(0, 10).forEach((record, index) => {
+                const row = recordsBody.insertRow();
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${record.timestamp}</td>
+                    <td>${record.winner.name}</td>
+                    <td>${record.winner.grade}</td>
+                    <td>${record.winner.school}</td>
+                    <td>${record.remainingTickets}</td>
+                `;
+                row.classList.add('fade-in');
+            });
+        }
+
+        // 清空抽奖记录
+        function clearLotteryRecords() {
+            if (confirm('确定要清空所有抽奖记录吗？此操作不可撤销！')) {
+                lotteryRecords = [];
+                updateLotteryRecords();
+                showMessage('addMessage', '抽奖记录已清空！', 'success');
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+        });
+
+        // 回车键添加参与者
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.target.closest('.card h2').textContent.includes('添加参与者')) {
+                addParticipant();
+            }
+        });
+    </script>
+</body>
+</html>
+
