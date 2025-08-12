@@ -449,6 +449,23 @@
         // 音效相关
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         
+        // 创建抽奖音效
+        function createLotterySound() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 1);
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 1);
+        }
         
         // 创建中奖音效
         function createWinSound() {
@@ -787,7 +804,7 @@
             }
         }
 
-           // 抽奖算法（只考虑有抽奖券的参与者）
+        // 抽奖算法（只考虑有抽奖券的参与者）
         function drawWinner() {
             const validParticipants = participants.filter(p => p.tickets > 0);
             if (validParticipants.length === 0) {
@@ -888,38 +905,34 @@
             batchWinnersList.innerHTML = html;
         }
 
-        // 备用方案（如果需要）
-        function getRandomParticipant() {
-            const validParticipants = participants.filter(p => p.tickets > 0);
-            return validParticipants[Math.floor(Math.random() * validParticipants.length)];
-        }
-
         // 更新抽奖记录显示
         function updateLotteryRecords() {
-            const recordsBody = document.getElementById('recordsBody');
-            if (!recordsBody) return;
-            
-            recordsBody.innerHTML = '';
-            
+            const tbody = document.getElementById('recordsBody');
+            tbody.innerHTML = '';
+
             if (lotteryRecords.length === 0) {
-                const row = recordsBody.insertRow();
-                row.innerHTML = `
-                    <td colspan="7" style="text-align: center; color: #999; padding: 40px;">
-                        暂无抽奖记录
-                    </td>
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: #999; padding: 40px;">
+                            暂无抽奖记录
+                        </td>
+                    </tr>
                 `;
                 return;
             }
+
+            // 只显示最近150条记录
+            const displayRecords = lotteryRecords.slice(0, 150);
             
-            lotteryRecords.slice(0, 150).forEach((record, index) => {
-                const row = recordsBody.insertRow();
+            displayRecords.forEach((record, index) => {
+                const row = tbody.insertRow();
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td>${record.timestamp}</td>
                     <td>${record.winner.name}</td>
                     <td>${record.winner.grade}</td>
                     <td>${record.winner.school}</td>
-                    <td>${record.prize || '未指定奖品'}</td>
+                    <td>${record.prize}</td>
                     <td>${record.remainingTickets}</td>
                 `;
                 row.classList.add('fade-in');
@@ -935,33 +948,30 @@
             }
         }
 
-        // 导出参与者名单到Excel
+        // 导出参与者名单到Excel（修改：移除剩余抽奖券列）
         function exportParticipantsToExcel() {
             if (participants.length === 0) {
                 showMessage('addMessage', '没有参与者数据可导出！', 'error');
                 return;
             }
 
-            const data = [
-                ['姓名', '年级', '分校', '奖杯数量', '抽奖券数量']
-            ];
+            // 准备导出数据，不包含剩余抽奖券
+            const exportData = participants.map(participant => ({
+                '姓名': participant.name,
+                '年级': participant.grade,
+                '分校': participant.school,
+                '奖杯数量': participant.trophies,
+                '抽奖券数量': participant.tickets,
+                '中奖几率': participants.reduce((sum, p) => sum + p.tickets, 0) > 0 ? 
+                    ((participant.tickets / participants.reduce((sum, p) => sum + p.tickets, 0)) * 100).toFixed(2) + '%' : '0.00%'
+            }));
 
-            participants.forEach(participant => {
-                data.push([
-                    participant.name,
-                    participant.grade,
-                    participant.school,
-                    participant.trophies,
-                    participant.tickets
-                ]);
-            });
-
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, '参与者名单');
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, '参与者名单');
 
             const fileName = `参与者名单_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+            XLSX.writeFile(workbook, fileName);
             
             showMessage('addMessage', '参与者名单导出成功！', 'success');
         }
@@ -973,42 +983,29 @@
                 return;
             }
 
-            const data = [
-                ['序号', '抽奖时间', '中奖者', '年级', '分校', '奖品', '剩余抽奖券']
-            ];
+            const exportData = lotteryRecords.map((record, index) => ({
+                '序号': index + 1,
+                '抽奖时间': record.timestamp,
+                '中奖者': record.winner.name,
+                '年级': record.winner.grade,
+                '分校': record.winner.school,
+                '奖品': record.prize,
+                '剩余抽奖券': record.remainingTickets
+            }));
 
-            lotteryRecords.forEach((record, index) => {
-                data.push([
-                    index + 1,
-                    record.timestamp,
-                    record.winner.name,
-                    record.winner.grade,
-                    record.winner.school,
-                    record.prize || '未指定奖品',
-                    record.remainingTickets
-                ]);
-            });
-
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, '抽奖记录');
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, '抽奖记录');
 
             const fileName = `抽奖记录_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+            XLSX.writeFile(workbook, fileName);
             
             showMessage('addMessage', '抽奖记录导出成功！', 'success');
         }
 
-        // 初始化
-        document.addEventListener('DOMContentLoaded', function() {
+        // 页面加载时初始化
+        window.addEventListener('load', function() {
             updateStats();
-        });
-
-        // 回车键添加参与者
-        document.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && e.target.closest('.card h2').textContent.includes('添加参与者')) {
-                addParticipant();
-            }
         });
     </script>
 </body>
