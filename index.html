@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>抽奖系统</title>
+    <title>A学者抽奖系统</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Microsoft YaHei', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4a90e2 0%, #7bb3f0 100%);
             min-height: 100vh;
             color: #333;
         }
@@ -299,7 +299,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎉 抽奖系统</h1>
+            <h1>🎉 A学者抽奖系统</h1>
             <p>奖杯兑换比例：5个奖杯 = 1张抽奖券</p>
         </div>
 
@@ -357,16 +357,39 @@
 
             <div class="card lottery-area">
                 <h2>🎲 开始抽奖</h2>
+                <div class="form-group" style="max-width: 400px; margin: 0 auto 20px;">
+                    <label for="prizeInput">本次抽奖奖品</label>
+                    <input type="text" id="prizeInput" placeholder="请输入奖品名称（如：一等奖、iPhone 15等）" style="text-align: center;">
+                </div>
+                
+                <div class="form-group" style="max-width: 400px; margin: 0 auto 20px;">
+                    <label for="batchTickets">批量抽奖券数量</label>
+                    <input type="number" id="batchTickets" min="1" max="1000" placeholder="请输入要抽取的抽奖券数量" style="text-align: center; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; width: 100%;">
+                    <div style="font-size: 0.9rem; color: rgba(255,255,255,0.8); margin-top: 5px; text-align: center;">
+                        💡 输入1表示单次抽奖，输入更大数值进行批量抽奖
+                    </div>
+                </div>
                 <div class="lottery-result" id="lotteryResult">
                     <h3>点击下方按钮开始抽奖</h3>
                     <p>系统将根据抽奖券数量进行公平抽奖</p>
+                </div>
+                
+                <div id="batchResults" style="display: none; margin-top: 20px;">
+                    <h3>🎉 批量抽奖结果</h3>
+                    <div id="batchWinnersList" style="max-height: 400px; overflow-y: auto; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin-top: 15px;">
+                        <!-- 批量中奖者列表将在这里显示 -->
+                    </div>
                 </div>
                 <button class="btn" onclick="startLottery()" id="lotteryBtn">开始抽奖</button>
             </div>
 
             <div class="card participants-list">
                 <h2>👥 参与者名单</h2>
-                <button class="btn btn-danger" onclick="clearAllParticipants()" style="float: right; margin-bottom: 20px;">清空所有数据</button>
+                <div style="float: right; margin-bottom: 20px;">
+                    <button class="btn" onclick="exportParticipantsToExcel()" style="margin-right: 10px; background: linear-gradient(45deg, #28a745, #20c997);">导出Excel</button>
+                    <button class="btn btn-danger" onclick="clearAllParticipants()">清空所有数据</button>
+                </div>
+                <div style="clear: both;"></div>
                 <table class="participants-table" id="participantsTable">
                     <thead>
                         <tr>
@@ -375,6 +398,7 @@
                             <th>分校</th>
                             <th>奖杯数量</th>
                             <th>抽奖券数量</th>
+                            <th>中奖几率</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -385,10 +409,13 @@
 
             <div class="card participants-list">
                 <h2>🎯 抽奖记录</h2>
-                <button class="btn btn-danger" onclick="clearLotteryRecords()" style="float: right; margin-bottom: 20px;">清空记录</button>
+                <div style="float: right; margin-bottom: 20px;">
+                    <button class="btn" onclick="exportRecordsToExcel()" style="margin-right: 10px; background: linear-gradient(45deg, #28a745, #20c997);">导出Excel</button>
+                    <button class="btn btn-danger" onclick="clearLotteryRecords()">清空记录</button>
+                </div>
                 <div style="clear: both;"></div>
                 <p style="margin-bottom: 15px; color: #666;">
-                    显示最近10次抽奖记录，每次中奖后抽奖券自动扣减1张
+                    显示最近150次抽奖记录，每次中奖后抽奖券自动扣减1张
                 </p>
                 <table class="participants-table" id="recordsTable">
                     <thead>
@@ -398,12 +425,13 @@
                             <th>中奖者</th>
                             <th>年级</th>
                             <th>分校</th>
+                            <th>奖品</th>
                             <th>剩余抽奖券</th>
                         </tr>
                     </thead>
                     <tbody id="recordsBody">
                         <tr>
-                            <td colspan="6" style="text-align: center; color: #999; padding: 40px;">
+                            <td colspan="7" style="text-align: center; color: #999; padding: 40px;">
                                 暂无抽奖记录
                             </td>
                         </tr>
@@ -417,6 +445,52 @@
     <script>
         let participants = [];
         let lotteryRecords = [];
+
+        // 音效相关
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 创建抽奖音效（转动音效）
+        function createLotterySound() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // 创建转动的音效，频率持续变化
+            oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.5);
+            oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 1.0);
+            oscillator.frequency.exponentialRampToValueAtTime(500, audioContext.currentTime + 1.5);
+            oscillator.frequency.exponentialRampToValueAtTime(250, audioContext.currentTime + 2.0);
+            
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2.0);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 2.0);
+        }
+
+        // 创建中奖音效
+        function createWinSound() {
+            const frequencies = [523, 659, 784, 1047]; // C, E, G, C
+            frequencies.forEach((freq, index) => {
+                setTimeout(() => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.4);
+                }, index * 150);
+            });
+        }
 
         // 添加参与者
         function addParticipant() {
@@ -475,7 +549,10 @@
             const tbody = document.getElementById('participantsBody');
             tbody.innerHTML = '';
 
+            const totalTickets = participants.reduce((sum, p) => sum + p.tickets, 0);
+
             participants.forEach(participant => {
+                const probability = totalTickets > 0 ? ((participant.tickets / totalTickets) * 100).toFixed(2) : '0.00';
                 const row = tbody.insertRow();
                 row.innerHTML = `
                     <td>${participant.name}</td>
@@ -483,6 +560,7 @@
                     <td>${participant.school}</td>
                     <td>${participant.trophies}</td>
                     <td>${participant.tickets}</td>
+                    <td>${probability}%</td>
                     <td>
                         <button class="btn" style="padding: 5px 15px; font-size: 12px;" onclick="removeParticipant(${participant.id})">删除</button>
                     </td>
@@ -590,78 +668,240 @@
                 return;
             }
 
+            const prizeInput = document.getElementById('prizeInput');
+            const prize = prizeInput.value.trim() || '未指定奖品';
+            
+            const batchTicketsInput = document.getElementById('batchTickets');
+            const batchTickets = parseInt(batchTicketsInput.value) || 1;
+
             const lotteryBtn = document.getElementById('lotteryBtn');
             const lotteryResult = document.getElementById('lotteryResult');
+            const batchResults = document.getElementById('batchResults');
+            
+            // 检查抽奖券数量是否有效
+            if (batchTickets < 1) {
+                showMessage('addMessage', '请输入有效的抽奖券数量（至少为1）！', 'error');
+                return;
+            }
+            
+            if (batchTickets > totalTickets) {
+                showMessage('addMessage', `当前总共只有${totalTickets}张抽奖券，无法抽取${batchTickets}张！`, 'error');
+                return;
+            }
+            
             
             // 开始抽奖动画
             lotteryBtn.disabled = true;
             lotteryBtn.textContent = '抽奖中...';
             lotteryBtn.classList.add('spinning');
             
-            lotteryResult.innerHTML = '<h3 class="spinning">🎲</h3><p>正在抽奖中...</p>';
-
-            // 模拟抽奖过程
-            setTimeout(() => {
-                const winner = drawWinner();
+            if (batchTickets === 1) {
+                // 单次抽奖
+                batchResults.style.display = 'none';
+                lotteryResult.style.display = 'flex';
+                lotteryResult.innerHTML = '<h3 class="spinning">🎲</h3><p>正在抽奖中...</p>';
                 
-                // 扣减中奖者的抽奖券
-                const winnerIndex = participants.findIndex(p => p.id === winner.id);
-                if (winnerIndex !== -1 && participants[winnerIndex].tickets > 0) {
-                    participants[winnerIndex].tickets -= 1;
-                }
+                setTimeout(() => {
+                    const winner = drawWinner();
+                    
+                    // 扣减中奖者的抽奖券
+                    const winnerIndex = participants.findIndex(p => p.id === winner.id);
+                    if (winnerIndex !== -1 && participants[winnerIndex].tickets > 0) {
+                        participants[winnerIndex].tickets -= 1;
+                    }
+                    
+                    // 播放中奖音效
+                    try {
+                        createWinSound();
+                    } catch (e) {
+                        console.log('中奖音效播放失败:', e);
+                    }
+                    
+                    // 记录抽奖结果
+                    const record = {
+                        id: Date.now(),
+                        timestamp: new Date().toLocaleString(),
+                        winner: { ...winner },
+                        prize: prize,
+                        remainingTickets: participants[winnerIndex] ? participants[winnerIndex].tickets : 0
+                    };
+                    lotteryRecords.unshift(record);
+                    
+                    // 更新显示
+                    updateTable();
+                    updateStats();
+                    updateLotteryRecords();
+                    
+                    lotteryResult.innerHTML = `
+                        <h3>🎉 恭喜中奖！</h3>
+                        <div class="winner-info">
+                            <p><strong>奖品：</strong>${prize}</p>
+                            <p><strong>姓名：</strong>${winner.name}</p>
+                            <p><strong>年级：</strong>${winner.grade}</p>
+                            <p><strong>分校：</strong>${winner.school}</p>
+                            <p><strong>奖杯数量：</strong>${winner.trophies}</p>
+                            <p><strong>剩余抽奖券：</strong>${record.remainingTickets}</p>
+                            <p style="font-size: 1rem; margin-top: 10px; opacity: 0.8;">抽奖券已自动扣减1张</p>
+                        </div>
+                    `;
+                    lotteryResult.classList.add('fade-in');
+                    
+                    lotteryBtn.disabled = false;
+                    lotteryBtn.textContent = '再次抽奖';
+                    lotteryBtn.classList.remove('spinning');
+                }, 2000);
+            } else {
+                // 批量抽奖（根据抽奖券数量）
+                lotteryResult.style.display = 'flex';
+                batchResults.style.display = 'block';
+                lotteryResult.innerHTML = '<h3 class="spinning">🎲</h3><p>正在进行批量抽奖...</p>';
                 
-                // 记录抽奖结果
-                const record = {
-                    id: Date.now(),
-                    timestamp: new Date().toLocaleString(),
-                    winner: { ...winner },
-                    remainingTickets: participants[winnerIndex] ? participants[winnerIndex].tickets : 0
-                };
-                lotteryRecords.unshift(record); // 最新记录在前
-                
-                // 更新显示
-                updateTable();
-                updateStats();
-                updateLotteryRecords();
-                
-                lotteryResult.innerHTML = `
-                    <h3>🎉 恭喜中奖！</h3>
-                    <div class="winner-info">
-                        <p><strong>姓名：</strong>${winner.name}</p>
-                        <p><strong>年级：</strong>${winner.grade}</p>
-                        <p><strong>分校：</strong>${winner.school}</p>
-                        <p><strong>奖杯数量：</strong>${winner.trophies}</p>
-                        <p><strong>剩余抽奖券：</strong>${record.remainingTickets}</p>
-                        <p style="font-size: 1rem; margin-top: 10px; opacity: 0.8;">抽奖券已自动扣减1张</p>
-                    </div>
-                `;
-                lotteryResult.classList.add('fade-in');
-                
-                lotteryBtn.disabled = false;
-                lotteryBtn.textContent = '再次抽奖';
-                lotteryBtn.classList.remove('spinning');
-            }, 2000);
+                setTimeout(() => {
+                    const winners = drawBatchWinnersByTickets(batchTickets);
+                    
+                    // 播放中奖音效
+                    try {
+                        createWinSound();
+                    } catch (e) {
+                        console.log('中奖音效播放失败:', e);
+                    }
+                    
+                    // 批量记录抽奖结果
+                    winners.forEach((winner, index) => {
+                        const record = {
+                            id: Date.now() + index,
+                            timestamp: new Date().toLocaleString(),
+                            winner: { ...winner },
+                            prize: prize,
+                            remainingTickets: winner.remainingTickets,
+                            batchIndex: index + 1,
+                            batchTotal: winners.length
+                        };
+                        lotteryRecords.unshift(record);
+                    });
+                    
+                    // 更新显示
+                    updateTable();
+                    updateStats();
+                    updateLotteryRecords();
+                    
+                    // 显示批量结果
+                    displayBatchResultsByTickets(winners, prize, batchTickets);
+                    
+                    lotteryResult.innerHTML = `
+                        <h3>🎉 批量抽奖完成！</h3>
+                        <p>抽取了 <strong>${batchTickets}</strong> 张抽奖券，共 <strong>${winners.length}</strong> 名中奖者</p>
+                        <p style="font-size: 1rem; margin-top: 10px; opacity: 0.8;">所有中奖者抽奖券已自动扣减</p>
+                    `;
+                    
+                    lotteryBtn.disabled = false;
+                    lotteryBtn.textContent = '再次抽奖';
+                    lotteryBtn.classList.remove('spinning');
+                }, 3000); // 批量抽奖时间稍长
+            }
         }
 
-        // 抽奖算法（只考虑有抽奖券的参与者）
+           // 抽奖算法（只考虑有抽奖券的参与者）
         function drawWinner() {
             const validParticipants = participants.filter(p => p.tickets > 0);
             if (validParticipants.length === 0) {
                 return null;
             }
-            
+
             const totalTickets = validParticipants.reduce((sum, p) => sum + p.tickets, 0);
-            const randomNum = Math.floor(Math.random() * totalTickets) + 1;
+            let randomNum = Math.random() * totalTickets;
             
-            let currentSum = 0;
             for (const participant of validParticipants) {
-                currentSum += participant.tickets;
-                if (randomNum <= currentSum) {
+                randomNum -= participant.tickets;
+                if (randomNum <= 0) {
                     return participant;
                 }
             }
             
-            // 备用方案
+            return validParticipants[validParticipants.length - 1];
+        }
+
+        // 批量抽奖算法
+        function drawBatchWinnersByTickets(ticketCount) {
+            const winners = [];
+            const participantsCopy = JSON.parse(JSON.stringify(participants)); // 深拷贝
+            
+            for (let i = 0; i < ticketCount; i++) {
+                const validParticipants = participantsCopy.filter(p => p.tickets > 0);
+                if (validParticipants.length === 0) {
+                    break; // 没有更多有效参与者
+                }
+                
+                const totalTickets = validParticipants.reduce((sum, p) => sum + p.tickets, 0);
+                let randomNum = Math.random() * totalTickets;
+                
+                let winner = null;
+                for (const participant of validParticipants) {
+                    randomNum -= participant.tickets;
+                    if (randomNum <= 0) {
+                        winner = participant;
+                        break;
+                    }
+                }
+                
+                if (!winner) {
+                    winner = validParticipants[validParticipants.length - 1];
+                }
+                
+                // 扣减中奖者的抽奖券（在副本中）
+                const winnerIndex = participantsCopy.findIndex(p => p.id === winner.id);
+                if (winnerIndex !== -1) {
+                    participantsCopy[winnerIndex].tickets -= 1;
+                    winner.remainingTickets = participantsCopy[winnerIndex].tickets;
+                }
+                
+                // 同时在原数组中扣减
+                const originalIndex = participants.findIndex(p => p.id === winner.id);
+                if (originalIndex !== -1) {
+                    participants[originalIndex].tickets -= 1;
+                }
+                
+                winners.push({ ...winner });
+            }
+            
+            return winners;
+        }
+
+        // 显示批量抽奖结果
+        function displayBatchResultsByTickets(winners, prize, ticketCount) {
+            const batchWinnersList = document.getElementById('batchWinnersList');
+            
+            let html = `
+                <div style="text-align: center; margin-bottom: 15px; padding: 10px; background: rgba(80,150,255,10); border-radius: 8px;">
+                    <h4 style="margin: 0; color: white;">🏆 ${prize}</h4>
+                    <p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.9);">抽取了 ${ticketCount} 张抽奖券，共 ${winners.length} 名中奖者</p>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+            `;
+            
+            winners.forEach((winner, index) => {
+                html += `
+                    <div style="background: rgba(80,150,255,10); border-radius: 8px; padding: 12px; border-left: 4px solid #0031FF;">
+                        <div style="font-weight: bold; color: white; margin-bottom: 5px;">
+                            🎉 第${index + 1}名中奖者
+                        </div>
+                        <div style="color: rgba(255,255,255,0.9); font-size: 0.9rem; line-height: 1.4;">
+                            <div><strong>姓名：</strong>${winner.name}</div>
+                            <div><strong>年级：</strong>${winner.grade}</div>
+                            <div><strong>分校：</strong>${winner.school}</div>
+                            <div><strong>剩余抽奖券：</strong>${winner.remainingTickets}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            batchWinnersList.innerHTML = html;
+        }
+
+        // 备用方案（如果需要）
+        function getRandomParticipant() {
+            const validParticipants = participants.filter(p => p.tickets > 0);
             return validParticipants[Math.floor(Math.random() * validParticipants.length)];
         }
 
@@ -675,14 +915,14 @@
             if (lotteryRecords.length === 0) {
                 const row = recordsBody.insertRow();
                 row.innerHTML = `
-                    <td colspan="6" style="text-align: center; color: #999; padding: 40px;">
+                    <td colspan="7" style="text-align: center; color: #999; padding: 40px;">
                         暂无抽奖记录
                     </td>
                 `;
                 return;
             }
             
-            lotteryRecords.slice(0, 10).forEach((record, index) => {
+            lotteryRecords.slice(0, 150).forEach((record, index) => {
                 const row = recordsBody.insertRow();
                 row.innerHTML = `
                     <td>${index + 1}</td>
@@ -690,6 +930,7 @@
                     <td>${record.winner.name}</td>
                     <td>${record.winner.grade}</td>
                     <td>${record.winner.school}</td>
+                    <td>${record.prize || '未指定奖品'}</td>
                     <td>${record.remainingTickets}</td>
                 `;
                 row.classList.add('fade-in');
@@ -703,6 +944,70 @@
                 updateLotteryRecords();
                 showMessage('addMessage', '抽奖记录已清空！', 'success');
             }
+        }
+
+        // 导出参与者名单到Excel
+        function exportParticipantsToExcel() {
+            if (participants.length === 0) {
+                showMessage('addMessage', '没有参与者数据可导出！', 'error');
+                return;
+            }
+
+            const data = [
+                ['姓名', '年级', '分校', '奖杯数量', '抽奖券数量']
+            ];
+
+            participants.forEach(participant => {
+                data.push([
+                    participant.name,
+                    participant.grade,
+                    participant.school,
+                    participant.trophies,
+                    participant.tickets
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '参与者名单');
+
+            const fileName = `参与者名单_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            
+            showMessage('addMessage', '参与者名单导出成功！', 'success');
+        }
+
+        // 导出抽奖记录到Excel
+        function exportRecordsToExcel() {
+            if (lotteryRecords.length === 0) {
+                showMessage('addMessage', '没有抽奖记录可导出！', 'error');
+                return;
+            }
+
+            const data = [
+                ['序号', '抽奖时间', '中奖者', '年级', '分校', '奖品', '剩余抽奖券']
+            ];
+
+            lotteryRecords.forEach((record, index) => {
+                data.push([
+                    index + 1,
+                    record.timestamp,
+                    record.winner.name,
+                    record.winner.grade,
+                    record.winner.school,
+                    record.prize || '未指定奖品',
+                    record.remainingTickets
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '抽奖记录');
+
+            const fileName = `抽奖记录_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            
+            showMessage('addMessage', '抽奖记录导出成功！', 'success');
         }
 
         // 初始化
