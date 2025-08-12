@@ -365,7 +365,7 @@
                 <div class="form-group" style="max-width: 400px; margin: 0 auto 20px;">
                     <label for="batchTickets">批量抽奖券数量</label>
                     <input type="number" id="batchTickets" min="1" max="1000" placeholder="请输入要抽取的抽奖券数量" style="text-align: center; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; width: 100%;">
-                    <div style="font-size: 0.9rem; color: rgba(255,255,255,0.8); margin-top: 5px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: rgba(0, 0, 0, 0.8); margin-top: 5px; text-align: center;">
                         💡 输入1表示单次抽奖，输入更大数值进行批量抽奖
                     </div>
                 </div>
@@ -415,7 +415,7 @@
                 </div>
                 <div style="clear: both;"></div>
                 <p style="margin-bottom: 15px; color: #666;">
-                    显示最近150次抽奖记录，每次中奖后抽奖券自动扣减1张
+                    显示最近150次抽奖记录，每次中奖后抽奖券自动扣减1张，奖杯自动扣减5个
                 </p>
                 <table class="participants-table" id="recordsTable">
                     <thead>
@@ -449,28 +449,7 @@
         // 音效相关
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         
-        // 创建抽奖音效（转动音效）
-        function createLotterySound() {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // 创建转动的音效，频率持续变化
-            oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.5);
-            oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 1.0);
-            oscillator.frequency.exponentialRampToValueAtTime(500, audioContext.currentTime + 1.5);
-            oscillator.frequency.exponentialRampToValueAtTime(250, audioContext.currentTime + 2.0);
-            
-            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2.0);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 2.0);
-        }
-
+        
         // 创建中奖音效
         function createWinSound() {
             const frequencies = [523, 659, 784, 1047]; // C, E, G, C
@@ -689,6 +668,12 @@
                 return;
             }
             
+            // 播放抽奖音效
+            try {
+                createLotterySound();
+            } catch (e) {
+                console.log('音效播放失败:', e);
+            }
             
             // 开始抽奖动画
             lotteryBtn.disabled = true;
@@ -704,10 +689,11 @@
                 setTimeout(() => {
                     const winner = drawWinner();
                     
-                    // 扣减中奖者的抽奖券
+                    // 扣减中奖者的抽奖券和奖杯
                     const winnerIndex = participants.findIndex(p => p.id === winner.id);
                     if (winnerIndex !== -1 && participants[winnerIndex].tickets > 0) {
                         participants[winnerIndex].tickets -= 1;
+                        participants[winnerIndex].trophies -= 5; // 同时扣减5个奖杯
                     }
                     
                     // 播放中奖音效
@@ -741,7 +727,7 @@
                             <p><strong>分校：</strong>${winner.school}</p>
                             <p><strong>奖杯数量：</strong>${winner.trophies}</p>
                             <p><strong>剩余抽奖券：</strong>${record.remainingTickets}</p>
-                            <p style="font-size: 1rem; margin-top: 10px; opacity: 0.8;">抽奖券已自动扣减1张</p>
+                            <p style="font-size: 1rem; margin-top: 10px; opacity: 0.8;">抽奖券已自动扣减1张，奖杯已自动扣减5个</p>
                         </div>
                     `;
                     lotteryResult.classList.add('fade-in');
@@ -791,7 +777,7 @@
                     lotteryResult.innerHTML = `
                         <h3>🎉 批量抽奖完成！</h3>
                         <p>抽取了 <strong>${batchTickets}</strong> 张抽奖券，共 <strong>${winners.length}</strong> 名中奖者</p>
-                        <p style="font-size: 1rem; margin-top: 10px; opacity: 0.8;">所有中奖者抽奖券已自动扣减</p>
+                        <p style="font-size: 1rem; margin-top: 10px; opacity: 0.8;">所有中奖者抽奖券和奖杯已自动扣减</p>
                     `;
                     
                     lotteryBtn.disabled = false;
@@ -848,17 +834,20 @@
                     winner = validParticipants[validParticipants.length - 1];
                 }
                 
-                // 扣减中奖者的抽奖券（在副本中）
+                // 扣减中奖者的抽奖券和奖杯（在副本中）
                 const winnerIndex = participantsCopy.findIndex(p => p.id === winner.id);
                 if (winnerIndex !== -1) {
                     participantsCopy[winnerIndex].tickets -= 1;
+                    participantsCopy[winnerIndex].trophies -= 5; // 同时扣减5个奖杯
                     winner.remainingTickets = participantsCopy[winnerIndex].tickets;
+                    winner.remainingTrophies = participantsCopy[winnerIndex].trophies;
                 }
                 
-                // 同时在原数组中扣减
+                // 同时在原数组中扣减抽奖券和奖杯
                 const originalIndex = participants.findIndex(p => p.id === winner.id);
                 if (originalIndex !== -1) {
                     participants[originalIndex].tickets -= 1;
+                    participants[originalIndex].trophies -= 5; // 同时扣减5个奖杯
                 }
                 
                 winners.push({ ...winner });
@@ -881,11 +870,11 @@
             
             winners.forEach((winner, index) => {
                 html += `
-                    <div style="background: rgba(80,150,255,10); border-radius: 8px; padding: 12px; border-left: 4px solid #0031FF;">
+                    <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); border-radius: 8px; padding: 12px; border-left: 4px solid #FFD700; box-shadow: 0 4px 8px rgba(30, 58, 138, 0.3);">
                         <div style="font-weight: bold; color: white; margin-bottom: 5px;">
                             🎉 第${index + 1}名中奖者
                         </div>
-                        <div style="color: rgba(255,255,255,0.9); font-size: 0.9rem; line-height: 1.4;">
+                        <div style="color: rgba(255,255,255,0.95); font-size: 0.9rem; line-height: 1.4;">
                             <div><strong>姓名：</strong>${winner.name}</div>
                             <div><strong>年级：</strong>${winner.grade}</div>
                             <div><strong>分校：</strong>${winner.school}</div>
